@@ -1,0 +1,15 @@
+{
+	"module": "TooltipDemo",
+	"componentPrefix": "av",
+	"build": [
+		{
+			"name": "Main",
+			"src": [
+				"./src/*"
+			],
+			"compile": [{
+				"output": "./dist/tooltip.js"
+			}]
+		}
+	]
+}

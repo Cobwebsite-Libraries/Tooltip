@@ -1,0 +1,151 @@
+export class Tooltip extends Aventus.WebComponent implements Aventus.DefaultComponent {
+
+	//#region static
+
+	//#endregion
+
+
+	//#region props
+	@Attribute()
+	public visible: boolean = false;
+	@Attribute()
+	public position: 'top' | 'left' | 'bottom' | 'right' = 'left';
+
+	@Attribute()
+	public use_absolute!: boolean;
+
+	@Attribute()
+	public delay!: number;
+	//#endregion
+
+
+	//#region variables
+	protected parent: HTMLElement | null = null;
+	private isDestroyed: boolean = false;
+	protected timeoutEnter: boolean = false;
+	protected timeout: number = 0;
+	//#endregion
+
+
+	//#region constructor
+
+	//#endregion
+
+
+	//#region methods
+	protected calculatePosition() {
+		if(!this.parent || !this.use_absolute) return;
+
+		let rect = this.parent.getBoundingClientRect();
+		let center = {
+			x: rect.left + rect.width / 2,
+			y: rect.y + rect.height / 2
+		};
+
+
+		if(this.position == 'bottom') {
+			let bottom = rect.y + rect.height;
+			this.style.setProperty("--local-tooltip-from-y", bottom - 10 + 'px');
+			this.style.setProperty("--local-tooltip-from-x", center.x + 'px');
+			this.style.setProperty("--local-tooltip-to-x", center.x + 'px');
+			this.style.setProperty("--local-tooltip-to-y", bottom + 10 + 'px');
+		}
+		else if(this.position == 'top') {
+			let bottom = document.body.offsetHeight - rect.top;
+			this.style.setProperty("--local-tooltip-from-y", bottom - 10 + 'px');
+			this.style.setProperty("--local-tooltip-from-x", center.x + 'px');
+			this.style.setProperty("--local-tooltip-to-x", center.x + 'px');
+			this.style.setProperty("--local-tooltip-to-y", bottom + 10 + 'px');
+		}
+		else if(this.position == 'right') {
+			let left = rect.x + rect.width;
+			this.style.setProperty("--local-tooltip-from-y", center.y + 'px');
+			this.style.setProperty("--local-tooltip-from-x", left - 10 + 'px');
+			this.style.setProperty("--local-tooltip-to-x", left + 10 + 'px');
+			this.style.setProperty("--local-tooltip-to-y", center.y + 10 + 'px');
+		}
+		else if(this.position == 'left') {
+			let left = document.body.offsetWidth - rect.left;
+			this.style.setProperty("--local-tooltip-from-y", center.y + 'px');
+			this.style.setProperty("--local-tooltip-from-x", left - 10 + 'px');
+			this.style.setProperty("--local-tooltip-to-x", left + 10 + 'px');
+			this.style.setProperty("--local-tooltip-to-y", center.y + 'px');
+		}
+	}
+
+	@BindThis()
+	protected onMouseEnter() {
+		this.calculatePosition();
+		let delay = this.delay == 0 ? 50 : this.delay;
+		if(this.use_absolute) {
+			document.body.appendChild(this);
+			this.timeoutEnter = false;
+			this.timeout = setTimeout(() => {
+				this.timeoutEnter = true;
+				this.visible = true;
+			}, delay);
+		}
+		else {
+			if(delay == 0) {
+				this.visible = true;
+			}
+			else {
+				this.timeoutEnter = false;
+				this.timeout = setTimeout(() => {
+					this.timeoutEnter = true;
+					this.visible = true;
+				}, delay);
+			}
+		}
+	}
+
+	@BindThis()
+	protected onMouseLeave() {
+		this.visible = false;
+		if(this.use_absolute) {
+			if(!this.timeoutEnter) {
+				clearTimeout(this.timeout);
+				this.onTransitionEnd();
+			}
+		}
+		else if(this.delay != 0) {
+			if(!this.timeoutEnter) {
+				clearTimeout(this.timeout);
+				this.onTransitionEnd();
+			}
+		}
+	}
+
+	@BindThis()
+	protected onTransitionEnd() {
+		if(!this.use_absolute || this.visible) return;
+
+		if(this.parent && !this.isDestroyed)
+			this.parent?.appendChild(this);
+		else
+			this.remove();
+	}
+
+
+	protected registerAction() {
+		if(!this.parent) return;
+
+		this.parent.addEventListener("mouseenter", this.onMouseEnter);
+		this.parent.addEventListener("mouseleave", this.onMouseLeave);
+		this.addEventListener("transitionend", this.onTransitionEnd);
+	}
+	protected override postCreation(): void {
+		this.parent = this.parentElement;
+		this.registerAction();
+	}
+
+	protected override postDestruction(): void {
+		this.isDestroyed = true;
+		super.postDestruction();
+		if(!this.parent) return;
+		this.parent.removeEventListener("mouseenter", this.onMouseEnter);
+		this.parent.removeEventListener("mouseleave", this.onMouseLeave);
+	}
+	//#endregion
+
+}
